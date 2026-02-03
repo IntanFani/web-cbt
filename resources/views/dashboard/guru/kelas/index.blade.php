@@ -1,105 +1,95 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kelola Data Kelas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-</head>
-<body class="bg-light">
+@extends('layouts.app')
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ route('dashboard.guru') }}">
-                <i class="fas fa-chalkboard-teacher me-2"></i>Panel Guru
-            </a>
-            <div class="d-flex align-items-center">
-                <span class="text-white me-3">Halo, {{ Auth::user()->name }}</span>
-            </div>
-        </div>
-    </nav>
+@section('title', 'Kelola Data Kelas')
+@section('nav-greeting', 'Daftar Kelas')
+@section('nav-description', 'Kelola distribusi dan pengelompokan siswa berdasarkan kelas.')
 
-    <div class="container">
-        
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h4 class="fw-bold mb-0">Manajemen Kelas</h4>
-                <p class="text-muted">Tambah dan kelola daftar kelas di sekolah.</p>
-            </div>
-            <a href="{{ route('dashboard.guru') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
-            </a>
-        </div>
+@section('content')
+<div class="container-fluid">
 
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+    <div class="d-flex justify-content-end align-items-center mb-4">
+        <a href="{{ route('ujian.index') }}" class="btn btn-outline-secondary rounded-3 px-3">
+            <i class="fas fa-arrow-left me-2"></i>Kembali
+        </a>
+    </div>
 
-        <div class="row">
-            <div class="col-md-4 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white fw-bold py-3">
+    <div class="row">
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h6 class="fw-bold mb-0 text-dark">
                         <i class="fas fa-plus-circle me-2 text-primary"></i>Tambah Kelas Baru
-                    </div>
-                    <div class="card-body p-4">
-                        <form action="{{ route('kelas.store') }}" method="POST">
-                            @csrf
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Nama Kelas</label>
-                                <input type="text" name="nama_kelas" class="form-control" placeholder="Contoh: X RPL 1" required>
-                                <small class="text-muted">Gunakan nama yang jelas dan unik.</small>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{{ route('kelas.store') }}" method="POST">
+                        @csrf
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Nama Kelas</label>
+                            <input type="text" name="nama_kelas" class="form-control rounded-3 border-0 bg-light py-3 px-3" 
+                                   placeholder="Misal: XII RPL 1" required>
+                            <div class="form-text mt-2 small text-muted">
+                                <i class="fas fa-info-circle me-1"></i> Gunakan format penamaan yang konsisten.
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 fw-bold">
-                                Simpan Kelas
-                            </button>
-                        </form>
-                    </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-3 rounded-3 shadow-sm">
+                            <i class="fas fa-save me-2"></i>Simpan Data Kelas
+                        </button>
+                    </form>
                 </div>
             </div>
+        </div>
 
-            <div class="col-md-8">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-0">
-                        <table class="table table-hover table-striped align-middle mb-0">
-                            <thead class="table-dark">
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+                <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark">Data Kelas Terdaftar</h6>
+                    <span class="badge bg-soft-primary text-primary px-3 py-2 rounded-pill" style="background: #eef2ff;">
+                        Total: {{ $kelas->count() }} Kelas
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
                                 <tr>
-                                    <th class="ps-4">No</th>
-                                    <th>Nama Kelas</th>
-                                    <th>Jumlah Siswa</th>
-                                    <th class="text-end pe-4">Aksi</th>
+                                    <th class="ps-4 border-0 py-3 text-muted small fw-bold" width="80">No</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold">Nama Kelas</th>
+                                    <th class="border-0 py-3 text-muted small fw-bold text-center">Jumlah Siswa</th>
+                                    <th class="text-center pe-0 border-0 py-3 text-muted small fw-bold">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($kelas as $index => $k)
                                     <tr>
-                                        <td class="ps-4 fw-bold">{{ $index + 1 }}</td>
+                                        <td class="ps-4 fw-medium text-muted">{{ $index + 1 }}</td>
                                         <td>
-                                            <span class="badge bg-info text-dark fs-6">{{ $k->nama_kelas }}</span>
+                                            <div class="fw-bold text-dark fs-6">{{ $k->nama_kelas }}</div>
                                         </td>
-                                        <td>
-                                            <i class="fas fa-users me-1 text-secondary"></i> 
-                                            {{ $k->students->count() }} Siswa
+                                        <td class="text-center">
+                                            <div class="d-inline-flex align-items-center bg-light px-2 py-1 rounded-pill">
+                                                <i class="fas fa-users text-primary me-2" style="font-size: 0.8rem;"></i>
+                                                <span class="fw-bold text-dark me-1">{{ $k->students->count() }}</span>
+                                                <span class="text-muted small">Siswa</span>
+                                            </div>
                                         </td>
-                                        <td class="text-end pe-4">
-                                            <form action="{{ route('kelas.delete', $k->id) }}" method="POST" id="delete-form-{{ $k->id }}">
+                                        <td class="text-end pe-5">
+                                            <form action="{{ route('kelas.delete', $k->id) }}" method="POST" id="delete-form-{{ $k->id }}" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete({{ $k->id }}, '{{ $k->nama_kelas }}')">
-                                                    <i class="fas fa-trash"></i> Hapus
+                                                <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-3 px-3" 
+                                                        onclick="confirmDelete({{ $k->id }}, '{{ $k->nama_kelas }}')">
+                                                    <i class="fas fa-trash-alt me-1"></i> Hapus
                                                 </button>
                                             </form>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center py-5 text-muted">
-                                            <i class="fas fa-school fa-3x mb-3 opacity-25"></i>
-                                            <p>Belum ada data kelas.</p>
+                                        <td colspan="4" class="text-center py-5">
+                                            <img src="https://illustrations.popsy.co/gray/folder-is-empty.svg" style="width: 140px;" class="mb-3 opacity-50">
+                                            <h6 class="text-muted fw-normal">Belum ada data kelas yang terdaftar.</h6>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -110,26 +100,31 @@
             </div>
         </div>
     </div>
+</div>
+@endsection
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        function confirmDelete(id, nama) {
-            Swal.fire({
-                title: 'Hapus Kelas?',
-                text: "Kelas " + nama + " akan dihapus. Siswa di kelas ini akan menjadi 'Tanpa Kelas'.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, Hapus!',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById('delete-form-' + id).submit();
-                }
-            })
-        }
-    </script>
-</body>
-</html>
+@section('scripts')
+<script>
+    function confirmDelete(id, nama) {
+        Swal.fire({
+            title: 'Hapus Kelas?',
+            text: "Data kelas " + nama + " akan dihapus permanen. Siswa di dalamnya akan kehilangan asosiasi kelas.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                popup: 'rounded-4',
+                confirmButton: 'rounded-3',
+                cancelButton: 'rounded-3'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-form-' + id).submit();
+            }
+        })
+    }
+</script>
+@endsection

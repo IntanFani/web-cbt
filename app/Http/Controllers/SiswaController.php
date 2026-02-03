@@ -137,4 +137,17 @@ class SiswaController extends Controller
         // 4. Redirect ke Dashboard dengan pesan sukses
         return redirect()->route('dashboard.siswa')->with('success', 'Selamat! Ujian telah selesai. Nilai Anda: ' . $nilai);
     }
+
+    // 5. History Nilai
+    public function history()
+    {
+        // Ambil sesi ujian milik siswa yang sedang login dan statusnya 'completed'
+        $histories = ExamSession::with('exam.teacher')
+                        ->where('user_id', Auth::id())
+                        ->where('status', 'completed')
+                        ->latest()
+                        ->get();
+
+        return view('dashboard.siswa.history', compact('histories'));
+    }
 }

@@ -15,14 +15,25 @@ class User extends Authenticatable
 
     protected $guarded = ['id'];
 
-    // Relasi: Guru punya banyak ujian
+    // Relasi 1: Guru punya banyak ujian
     public function exams() {
         return $this->hasMany(Exam::class, 'teacher_id');
     }
 
-    // Relasi : Kelas
+    // Relasi 2: Siswa masuk ke satu Kelas
     public function kelas()
     {
         return $this->belongsTo(Kelas::class, 'kelas_id');
+    }
+
+    // ==========================================
+    // TAMBAHAN PENTING (SOLUSI ERROR)
+    // ==========================================
+    
+    // Relasi 3: Siswa memiliki banyak riwayat ujian (ExamSession)
+    // Fungsi inilah yang dipanggil oleh withAvg('examSessions', ...) di Controller/View
+    public function examSessions()
+    {
+        return $this->hasMany(ExamSession::class, 'user_id');
     }
 }

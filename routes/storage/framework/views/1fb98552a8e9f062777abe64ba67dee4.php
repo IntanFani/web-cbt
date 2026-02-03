@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Hasil Ujian - {{ $exam->title }}</title>
+    <title>Hasil Ujian - <?php echo e($exam->title); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -15,9 +15,9 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h4 class="fw-bold mb-1">Hasil Ujian Siswa</h4>
-                <p class="text-muted mb-0">Ujian: <span class="fw-bold text-dark">{{ $exam->title }}</span></p>
+                <p class="text-muted mb-0">Ujian: <span class="fw-bold text-dark"><?php echo e($exam->title); ?></span></p>
             </div>
-            <a href="{{ route('dashboard.guru') }}" class="btn btn-secondary">
+            <a href="<?php echo e(route('dashboard.guru')); ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Kembali
             </a>
         </div>
@@ -27,7 +27,7 @@
                 <div class="card border-0 shadow-sm bg-primary text-white">
                     <div class="card-body">
                         <h6 class="opacity-75">Total Peserta</h6>
-                        <h3 class="fw-bold">{{ $sessions->count() }} Siswa</h3>
+                        <h3 class="fw-bold"><?php echo e($sessions->count()); ?> Siswa</h3>
                     </div>
                 </div>
             </div>
@@ -35,7 +35,7 @@
                 <div class="card border-0 shadow-sm bg-success text-white">
                     <div class="card-body">
                         <h6 class="opacity-75">Nilai Tertinggi</h6>
-                        <h3 class="fw-bold">{{ $sessions->max('score') ?? 0 }}</h3>
+                        <h3 class="fw-bold"><?php echo e($sessions->max('score') ?? 0); ?></h3>
                     </div>
                 </div>
             </div>
@@ -43,7 +43,7 @@
                 <div class="card border-0 shadow-sm bg-info text-white">
                     <div class="card-body">
                         <h6 class="opacity-75">Rata-rata Nilai</h6>
-                        <h3 class="fw-bold">{{ number_format($sessions->avg('score'), 1) }}</h3>
+                        <h3 class="fw-bold"><?php echo e(number_format($sessions->avg('score'), 1)); ?></h3>
                     </div>
                 </div>
             </div>
@@ -51,18 +51,19 @@
 
         <div class="card mb-4 border-0 shadow-sm">
             <div class="card-body bg-light">
-                <form action="{{ route('ujian.results', $exam->id) }}" method="GET" class="row g-2 align-items-end">
+                <form action="<?php echo e(route('ujian.results', $exam->id)); ?>" method="GET" class="row g-2 align-items-end">
 
                     <div class="col-md-3">
                         <label class="fw-bold small mb-1">Filter Kelas</label>
                         <select name="filter_kelas" class="form-select form-select-sm">
                             <option value="">-- Semua Kelas --</option>
-                            @foreach ($allKelas as $k)
-                                <option value="{{ $k->id }}"
-                                    {{ request('filter_kelas') == $k->id ? 'selected' : '' }}>
-                                    {{ $k->nama_kelas }}
+                            <?php $__currentLoopData = $allKelas; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $k): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($k->id); ?>"
+                                    <?php echo e(request('filter_kelas') == $k->id ? 'selected' : ''); ?>>
+                                    <?php echo e($k->nama_kelas); ?>
+
                                 </option>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
 
@@ -70,12 +71,13 @@
                         <label class="fw-bold small mb-1">Filter Angkatan</label>
                         <select name="filter_angkatan" class="form-select form-select-sm">
                             <option value="">-- Semua Angkatan --</option>
-                            @foreach ($allAngkatan as $thn)
-                                <option value="{{ $thn }}"
-                                    {{ request('filter_angkatan') == $thn ? 'selected' : '' }}>
-                                    Angkatan {{ $thn }}
+                            <?php $__currentLoopData = $allAngkatan; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $thn): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($thn); ?>"
+                                    <?php echo e(request('filter_angkatan') == $thn ? 'selected' : ''); ?>>
+                                    Angkatan <?php echo e($thn); ?>
+
                                 </option>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
 
@@ -84,35 +86,35 @@
                             <i class="fas fa-filter me-1"></i> Filter
                         </button>
 
-                        <a href="{{ route('ujian.export', $exam->id) }}?filter_kelas={{ request('filter_kelas') }}&filter_angkatan={{ request('filter_angkatan') }}" 
+                        <a href="<?php echo e(route('ujian.export', $exam->id)); ?>?filter_kelas=<?php echo e(request('filter_kelas')); ?>&filter_angkatan=<?php echo e(request('filter_angkatan')); ?>" 
                         class="btn btn-success btn-sm fw-bold flex-grow-1" target="_blank">
                             <i class="fas fa-file-excel me-1"></i> Excel
                         </a>
                     </div>
 
-                    @if (request('filter_kelas') || request('filter_angkatan'))
+                    <?php if(request('filter_kelas') || request('filter_angkatan')): ?>
                         <div class="col-md-4 text-end">
                             <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="confirmBulkReset()">
                                 <i class="fas fa-bomb me-1"></i> Reset Siswa Terfilter
                             </button>
                         </div>
-                    @endif
+                    <?php endif; ?>
                 </form>
 
-                <form id="bulk-reset-form" action="{{ route('ujian.resetBulk', $exam->id) }}" method="POST"
+                <form id="bulk-reset-form" action="<?php echo e(route('ujian.resetBulk', $exam->id)); ?>" method="POST"
                     class="d-none">
-                    @csrf
-                    <input type="hidden" name="filter_kelas" value="{{ request('filter_kelas') }}">
-                    <input type="hidden" name="filter_angkatan" value="{{ request('filter_angkatan') }}">
+                    <?php echo csrf_field(); ?>
+                    <input type="hidden" name="filter_kelas" value="<?php echo e(request('filter_kelas')); ?>">
+                    <input type="hidden" name="filter_angkatan" value="<?php echo e(request('filter_angkatan')); ?>">
                 </form>
             </div>
         </div>
 
-        @if (request('filter_kelas'))
+        <?php if(request('filter_kelas')): ?>
             <div class="alert alert-info py-2 mb-3">
                 <i class="fas fa-trophy me-2"></i> Menampilkan Peringkat untuk <strong>Kelas Terpilih</strong>
             </div>
-        @endif
+        <?php endif; ?>
 
         <div class="card border-0 shadow-sm">
             <div class="card-body p-0">
@@ -129,9 +131,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($sessions as $index => $session)
+                        <?php $__empty_1 = true; $__currentLoopData = $sessions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $session): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
-                                <td class="ps-4 fw-bold">#{{ $index + 1 }}</td>
+                                <td class="ps-4 fw-bold">#<?php echo e($index + 1); ?></td>
 
                                 <td>
                                     <div class="d-flex align-items-center">
@@ -139,44 +141,45 @@
                                             style="width: 40px; height: 40px;">
                                             <i class="fas fa-user text-secondary"></i>
                                         </div>
-                                        <span class="fw-bold">{{ $session->user->name }}</span>
+                                        <span class="fw-bold"><?php echo e($session->user->name); ?></span>
                                     </div>
                                 </td>
 
                                 <td class="text-muted small">
-                                    {{ \Carbon\Carbon::parse($session->end_time)->format('d M Y, H:i') }}
+                                    <?php echo e(\Carbon\Carbon::parse($session->end_time)->format('d M Y, H:i')); ?>
+
                                 </td>
 
-                                <td class="fw-bold fs-5">{{ $session->score }}</td>
+                                <td class="fw-bold fs-5"><?php echo e($session->score); ?></td>
 
                                 <td>
-                                    @if ($session->score >= 70)
+                                    <?php if($session->score >= 70): ?>
                                         <span class="badge bg-success">Lulus</span>
-                                    @else
+                                    <?php else: ?>
                                         <span class="badge bg-danger">Remedial</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </td>
 
                                 <td class="text-end pe-4">
-                                    <form action="{{ route('ujian.reset', $session->id) }}" method="POST"
-                                        class="d-inline" id="reset-form-{{ $session->id }}">
-                                        @csrf
-                                        @method('DELETE')
+                                    <form action="<?php echo e(route('ujian.reset', $session->id)); ?>" method="POST"
+                                        class="d-inline" id="reset-form-<?php echo e($session->id); ?>">
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('DELETE'); ?>
                                         <button type="button" class="btn btn-sm btn-outline-danger"
-                                            onclick="confirmReset({{ $session->id }}, '{{ $session->user->name }}')">
+                                            onclick="confirmReset(<?php echo e($session->id); ?>, '<?php echo e($session->user->name); ?>')">
                                             <i class="fas fa-redo-alt me-1"></i> Reset / Ulang
                                         </button>
                                     </form>
                                 </td>
                             </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <tr>
                                 <td colspan="6" class="text-center py-5 text-muted">
                                     <i class="fas fa-users-slash fa-3x mb-3 opacity-25"></i>
                                     <p>Belum ada siswa yang menyelesaikan ujian ini.</p>
                                 </td>
                             </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -224,3 +227,4 @@
 </body>
 
 </html>
+<?php /**PATH C:\xampp\htdocs\web-cbt\resources\views/dashboard/guru/results.blade.php ENDPATH**/ ?>

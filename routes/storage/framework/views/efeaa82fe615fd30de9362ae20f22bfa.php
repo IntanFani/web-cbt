@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Kelola Soal - {{ $exam->title }}</title>
+    <title>Kelola Soal - <?php echo e($exam->title); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -13,19 +13,20 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="fw-bold mb-0">Kelola Soal</h4>
-            <p class="text-muted mb-0">Ujian: {{ $exam->title }}</p>
+            <p class="text-muted mb-0">Ujian: <?php echo e($exam->title); ?></p>
         </div>
-        <a href="{{ route('dashboard.guru') }}" class="btn btn-secondary">
+        <a href="<?php echo e(route('dashboard.guru')); ?>" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-2"></i>Kembali
         </a>
     </div>
 
-    @if(session('success'))
+    <?php if(session('success')): ?>
         <div class="alert alert-success alert-dismissible fade show">
-            {{ session('success') }}
+            <?php echo e(session('success')); ?>
+
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-    @endif
+    <?php endif; ?>
 
     <div class="row">
         <div class="col-md-5">
@@ -34,8 +35,8 @@
                     <i class="fas fa-plus-circle me-2"></i>Tambah Soal Baru
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('questions.store', $exam->id) }}" method="POST">
-                        @csrf
+                    <form action="<?php echo e(route('questions.store', $exam->id)); ?>" method="POST">
+                        <?php echo csrf_field(); ?>
                         
                         <div class="mb-3">
                             <label class="form-label">Pertanyaan</label>
@@ -89,41 +90,42 @@
         </div>
 
         <div class="col-md-7">
-            <h5 class="mb-3">Daftar Soal ({{ $exam->questions->count() }})</h5>
+            <h5 class="mb-3">Daftar Soal (<?php echo e($exam->questions->count()); ?>)</h5>
             
-            @forelse($exam->questions as $index => $q)
+            <?php $__empty_1 = true; $__currentLoopData = $exam->questions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $q): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
-                            <h6 class="fw-bold">No. {{ $index + 1 }}</h6>
-                            <form id="delete-form-{{ $q->id }}" action="{{ route('questions.delete', $q->id) }}" method="POST">
-                                @csrf
-                                @method('DELETE')
+                            <h6 class="fw-bold">No. <?php echo e($index + 1); ?></h6>
+                            <form id="delete-form-<?php echo e($q->id); ?>" action="<?php echo e(route('questions.delete', $q->id)); ?>" method="POST">
+                                <?php echo csrf_field(); ?>
+                                <?php echo method_field('DELETE'); ?>
                                 
-                                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="alertHapus({{ $q->id }})">
+                                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="alertHapus(<?php echo e($q->id); ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
                         </div>
                         
-                        <p class="mb-3">{{ $q->question_text }}</p>
+                        <p class="mb-3"><?php echo e($q->question_text); ?></p>
                         
                         <ul class="list-group list-group-flush small">
-                            @foreach($q->options as $opt)
-                                <li class="list-group-item {{ $opt->is_correct ? 'bg-success bg-opacity-10 fw-bold text-success' : '' }}">
-                                    @if($opt->is_correct) <i class="fas fa-check me-2"></i> @endif
-                                    {{ $opt->option_text }}
+                            <?php $__currentLoopData = $q->options; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <li class="list-group-item <?php echo e($opt->is_correct ? 'bg-success bg-opacity-10 fw-bold text-success' : ''); ?>">
+                                    <?php if($opt->is_correct): ?> <i class="fas fa-check me-2"></i> <?php endif; ?>
+                                    <?php echo e($opt->option_text); ?>
+
                                 </li>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </ul>
                     </div>
                 </div>
-            @empty
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <div class="text-center py-5 text-muted">
                     <i class="fas fa-clipboard-list fa-3x mb-3 opacity-25"></i>
                     <p>Belum ada soal di ujian ini.</p>
                 </div>
-            @endforelse
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -150,4 +152,4 @@
     }
 </script>
 </body>
-</html>
+</html><?php /**PATH C:\xampp\htdocs\web-cbt\resources\views/dashboard/guru/questions.blade.php ENDPATH**/ ?>
