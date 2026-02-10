@@ -2,18 +2,16 @@
 
 @section('title', 'Hasil Ujian - ' . $exam->title)
 @section('nav-greeting', 'Laporan Nilai Siswa')
+@section('nav-description', 'Judul Ujian : ' .$exam->title)
+
+@section('back-button')
+    <a href="{{ route('ujian.index') }}" class="nav-back-btn">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+@endsection
 
 @section('content')
 <div class="container-fluid">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <p class="text-muted mb-0">Judul Ujian: <span class="fw-bold text-primary">{{ $exam->title }}</span></p>
-        </div>
-        <a href="{{ route('ujian.index') }}" class="btn btn-outline-secondary rounded-3 px-3">
-            <i class="fas fa-arrow-left me-2"></i>Kembali
-        </a>
-    </div>
 
     <div class="row mb-4 g-3">
         <div class="col-md-4">

@@ -12,6 +12,7 @@ use App\Models\ExamSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\Storage;
 
 class GuruController extends Controller
 {
@@ -79,13 +80,16 @@ class GuruController extends Controller
     public function manageExams()
     {
         $exams = Exam::where('teacher_id', Auth::id())->latest()->get();
-        // Path View Baru: dashboard.guru.ujian.index
-        return view('dashboard.guru.ujian.index', compact('exams'));
+        // KIRIM VARIABEL CLASSES AGAR MODAL TIDAK ERROR
+        $classes = Kelas::all(); 
+        
+        return view('dashboard.guru.ujian.index', compact('exams', 'classes'));
     }
 
     // B. Halaman Buat Ujian Baru
     public function createExam()
     {
+        $classes = Kelas::all();
         // Path View Baru: dashboard.guru.ujian.create
         return view('dashboard.guru.ujian.create');
     }
@@ -94,20 +98,20 @@ class GuruController extends Controller
     public function storeExam(Request $request)
     {
         $request->validate([
-            'title' => 'required|max:255',
-            'duration' => 'required|integer|min:1',
+        'title' => 'required',
+        'kelas_id' => 'required', // Validasi kelas wajib diisi
+        'duration' => 'required|numeric',
         ]);
 
         $exam = Exam::create([
             'teacher_id' => Auth::id(),
+            'kelas_id' => $request->kelas_id,
             'title' => $request->title,
             'duration' => $request->duration,
-            'token' => Str::upper(Str::random(6)), 
-            'random_question' => $request->has('random_question'),
+            'token' => strtoupper(Str::random(5)), // Generate token otomatis
         ]);
 
-        // Setelah buat ujian, langsung arahkan ke halaman input soal biar praktis
-        return redirect()->route('ujian.questions', $exam->id)->with('success', 'Ujian berhasil dibuat! Silakan tambah soal.');
+       return redirect()->route('ujian.questions', $exam->id)->with('success', 'Ujian berhasil dibuat! Silakan tambah soal.');
     }
 
     // D. Halaman Edit Ujian
@@ -119,8 +123,10 @@ class GuruController extends Controller
             abort(403);
         }
 
+        $classes = Kelas::all();
+
         // Path View Baru: dashboard.guru.ujian.edit
-        return view('dashboard.guru.ujian.edit', compact('exam'));
+        return view('dashboard.guru.ujian.edit', compact('exam','classes'));
     }
 
     // E. Proses Update Ujian
@@ -129,6 +135,7 @@ class GuruController extends Controller
         $request->validate([
             'title' => 'required|max:255',
             'duration' => 'required|integer|min:1',
+            'kelas_id' => 'required'
         ]);
 
         $exam = Exam::findOrFail($id);
@@ -140,6 +147,7 @@ class GuruController extends Controller
         $exam->update([
             'title' => $request->title,
             'duration' => $request->duration,
+            'kelas_id' => $request->kelas_id,
             'random_question' => $request->has('random_question') ? 1 : 0,
         ]);
 
@@ -182,40 +190,75 @@ class GuruController extends Controller
     // B. Simpan Soal Manual
     public function storeQuestion(Request $request, $id)
     {
+        // 1. Validasi disesuaikan dengan kolom database 'image' dan tipe 'essay'
         $request->validate([
             'question_text' => 'required',
-            'options' => 'required|array|min:2',
-            'correct_answer' => 'required|integer',
+            'type' => 'required|in:pilihan_ganda,benar_salah,essay', // disesuaikan dengan enum database
+            'question_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', 
+            'options' => 'required_if:type,pilihan_ganda|array',
+            'correct_answer' => 'required_if:type,pilihan_ganda|integer',
+            'correct_answer_bs' => 'required_if:type,benar_salah|in:1,0', // 1 untuk Benar, 0 untuk Salah
         ]);
 
         $exam = Exam::findOrFail($id);
-
         if($exam->teacher_id != Auth::id()) { abort(403); }
 
+        // 2. Handle Upload Gambar (Nama kolom database: image)
+        $imagePath = null;
+        if ($request->hasFile('question_image')) {
+            // Menyimpan di folder 'questions' dalam disk public
+            $imagePath = $request->file('question_image')->store('questions', 'public');
+        }
+
+        // 3. Buat Soal (Nama kolom sesuai migration: image & type)
         $question = Question::create([
             'exam_id' => $id,
             'question_text' => $request->question_text,
-            'type' => 'pilihan_ganda'
+            'image' => $imagePath, // Sesuai kolom migration kamu
+            'type' => $request->type
         ]);
 
-        foreach ($request->options as $index => $optionText) {
+        // 4. Logika Penyimpanan Opsi berdasarkan Tipe
+        if ($request->type == 'pilihan_ganda') {
+            foreach ($request->options as $index => $optionText) {
+                Option::create([
+                    'question_id' => $question->id,
+                    'option_text' => $optionText,
+                    'is_correct' => ($index == $request->correct_answer)
+                ]);
+            }
+        } 
+        elseif ($request->type == 'benar_salah') {
+            // Simpan dua opsi standar: Benar dan Salah
+            // Opsi Benar
             Option::create([
                 'question_id' => $question->id,
-                'option_text' => $optionText,
-                'is_correct' => ($index == $request->correct_answer)
+                'option_text' => 'Benar',
+                'is_correct' => ($request->correct_answer_bs == "1")
+            ]);
+            // Opsi Salah
+            Option::create([
+                'question_id' => $question->id,
+                'option_text' => 'Salah',
+                'is_correct' => ($request->correct_answer_bs == "0")
             ]);
         }
+        // Jika tipe 'essay', tabel options tetap kosong sesuai rencana
 
         return redirect()->back()->with('success', 'Soal berhasil ditambahkan!');
     }
-    
-    // C. Hapus Soal
+
+    // C. Hapus Soal (Update: Hapus File Gambar dari Storage)
     public function deleteQuestion($id)
     {
         $question = Question::findOrFail($id);
         
-        // Cek kepemilikan via relasi exam
         if($question->exam->teacher_id != Auth::id()) { abort(403); }
+
+        // Hapus file gambar jika ada sebelum record dihapus
+        if ($question->question_image) {
+            Storage::disk('public')->delete($question->question_image);
+        }
 
         $question->delete(); 
         
@@ -224,79 +267,84 @@ class GuruController extends Controller
 
     // D. Import Soal dari CSV
     public function importQuestions(Request $request, $id)
-{
-    $request->validate([
-        'file' => 'required|mimes:csv,txt'
-    ]);
+    {
+        $request->validate([
+            'file' => 'required|mimes:csv,txt'
+        ]);
 
-    $exam = Exam::findOrFail($id);
+        $exam = Exam::findOrFail($id);
 
-    // Cek otorisasi pemilik ujian
-    if ($exam->teacher_id != Auth::id()) {
-        abort(403);
-    }
-
-    $file = $request->file('file');
-
-    // Gunakan Transaction agar jika error di tengah jalan, tidak ada data setengah-setengah yang masuk
-    DB::beginTransaction();
-
-    try {
-        if (($handle = fopen($file->getRealPath(), "r")) !== FALSE) {
-            
-            // 1. LEWATI HEADER (Baris Pertama)
-            fgetcsv($handle); 
-
-            while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                
-                // Validasi kolom minimal 6
-                if (count($data) < 6) continue; 
-
-                // Buat Soal
-                $question = Question::create([
-                    'exam_id' => $exam->id,
-                    'question_text' => $data[0], // Kolom 1: Soal
-                    'type' => 'pilihan_ganda'
-                ]);
-
-                // Ambil Kunci Jawaban (Bersihkan spasi & Huruf Besar)
-                // Contoh: " a " -> "A"
-                $correctKey = strtoupper(trim($data[5])); 
-
-                // Mapping Huruf ke Angka Urutan (1-4)
-                // A = 1, B = 2, C = 3, D = 4
-                $keyMap = [
-                    'A' => 1,
-                    'B' => 2,
-                    'C' => 3,
-                    'D' => 4
-                ];
-
-                // Jika kunci tidak valid, default ke 0 (tidak ada yang benar)
-                $correctIndex = $keyMap[$correctKey] ?? 0;
-
-                // Loop Opsi (Index CSV 1 s/d 4)
-                // $i = 1 (A), $i = 2 (B), dst...
-                for ($i = 1; $i <= 4; $i++) {
-                    Option::create([
-                        'question_id' => $question->id,
-                        'option_text' => $data[$i], // Ambil teks dari kolom 1, 2, 3, 4
-                        // Bandingkan urutan loop ($i) dengan hasil mapping kunci ($correctIndex)
-                        'is_correct' => ($i == $correctIndex) ? 1 : 0 
-                    ]);
-                }
-            }
-            fclose($handle);
+        if ($exam->teacher_id != Auth::id()) {
+            abort(403);
         }
 
-        DB::commit(); // Simpan permanen jika sukses
-        return back()->with('success', 'Import soal berhasil!');
+        $file = $request->file('file');
+        DB::beginTransaction();
 
-    } catch (\Exception $e) {
-        DB::rollBack(); // Batalkan semua jika ada error
-        return back()->with('error', 'Gagal import: ' . $e->getMessage());
+        try {
+            if (($handle = fopen($file->getRealPath(), "r")) !== FALSE) {
+                
+                // 1. LEWATI HEADER
+                fgetcsv($handle); 
+
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    // Validasi minimal kolom (Soal, Tipe, Opsi1, Opsi2, Opsi3, Opsi4, Jawaban)
+                    if (count($data) < 7) continue; 
+
+                    $questionText = $data[0];
+                    $type = strtolower(trim($data[1])); // Kolom 2: type (pilihan_ganda, benar_salah, essay)
+
+                    // A. Buat Soal
+                    $question = Question::create([
+                        'exam_id' => $exam->id,
+                        'question_text' => $questionText,
+                        'type' => $type
+                    ]);
+
+                    // B. Logika berdasarkan Tipe
+                    if ($type == 'pilihan_ganda') {
+                        $correctKey = strtoupper(trim($data[6])); // Kolom 7: Jawaban (A/B/C/D)
+                        $keyMap = ['A' => 2, 'B' => 3, 'C' => 4, 'D' => 5]; // Mapping ke kolom index CSV
+                        $correctIndex = $keyMap[$correctKey] ?? 0;
+
+                        for ($i = 2; $i <= 5; $i++) {
+                            Option::create([
+                                'question_id' => $question->id,
+                                'option_text' => $data[$i],
+                                'is_correct' => ($i == $correctIndex) ? 1 : 0 
+                            ]);
+                        }
+
+                    } elseif ($type == 'benar_salah') {
+                        // Ambil jawaban: "Benar" atau "Salah" (ada di kolom index 6)
+                        $answerBS = ucfirst(strtolower(trim($data[6]))); 
+                        
+                        $optionsBS = ['Benar', 'Salah'];
+                        foreach ($optionsBS as $optText) {
+                            Option::create([
+                                'question_id' => $question->id,
+                                'option_text' => $optText,
+                                'is_correct' => ($optText == $answerBS) ? 1 : 0
+                            ]);
+                        }
+
+                    } elseif ($type == 'essay') {
+                        // Untuk essay, biasanya tidak ada opsi yang disimpan di tabel options
+                        // atau bisa dikosongkan saja.
+                    }
+                }
+                fclose($handle);
+            }
+
+            DB::commit();
+            return back()->with('success', 'Import soal berbagai tipe berhasil!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal import: ' . $e->getMessage());
+        }
     }
-}
+
     // ==========================================
     // 4. HASIL & LAPORAN
     // ==========================================
@@ -394,6 +442,7 @@ class GuruController extends Controller
             $session->answers()->delete(); 
             $session->delete();            
         }
+    
 
         return back()->with('success', "Berhasil me-reset $count siswa.");
     }

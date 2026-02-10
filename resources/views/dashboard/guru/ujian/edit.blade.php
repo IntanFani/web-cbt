@@ -45,6 +45,19 @@
                                     <span class="input-group-text bg-light border-0 text-muted">Menit</span>
                                 </div>
                             </div>
+
+                            <div class="mb-3">
+                                <label class="text-dark">Pilih Kelas</label>
+                                <select name="kelas_id" class="form-control text-dark" required>
+                                    <option value="">-- Pilih Kelas --</option>
+                                    @foreach($classes as $class)
+                                        <option value="{{ $class->id }}" 
+                                            {{ $exam->kelas_id == $class->id ? 'selected' : '' }}>
+                                            {{ $class->nama_kelas }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
 
                         <div class="mb-5">

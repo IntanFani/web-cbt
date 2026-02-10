@@ -32,6 +32,12 @@ class Exam extends Model
         return $this->hasMany(ExamSession::class);
     }
 
+    public function kelas()
+    {
+        // Ujian ini dimiliki oleh satu kelas
+        return $this->belongsTo(Kelas::class, 'kelas_id');
+    }
+
     public function import(Request $request, Exam $exam)
     {
         // 1. Validasi File

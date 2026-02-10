@@ -34,7 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/riwayat-ujian', [SiswaController::class, 'history'])->name('ujian.history');
     
     // Ujian Siswa
-    Route::get('/ujian/{id}/start', [SiswaController::class, 'startExam'])->name('ujian.start');
+    Route::post('/ujian/{id}/start', [SiswaController::class, 'startExam'])->name('ujian.start');
     Route::get('/ujian/{id}/kerjakan', [SiswaController::class, 'showExam'])->name('ujian.show');
     Route::post('/ujian/simpan-jawaban', [SiswaController::class, 'saveAnswer'])->name('ujian.simpan');
     Route::post('/ujian/{id}/selesai', [SiswaController::class, 'finishExam'])->name('ujian.selesai');
@@ -90,7 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/kelola-siswa/{id}/edit', [SiswaAdminController::class, 'edit'])->name('siswa.edit');
     Route::put('/kelola-siswa/{id}', [SiswaAdminController::class, 'update'])->name('siswa.update');
     Route::delete('/kelola-siswa/{id}', [SiswaAdminController::class, 'destroy'])->name('siswa.delete');
-
+    Route::post('/siswa/import', [SiswaController::class, 'importExcel'])->name('siswa.import');
 
     // ==========================================
     // LOGIC REDIRECT

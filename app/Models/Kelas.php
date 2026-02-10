@@ -15,4 +15,24 @@ class Kelas extends Model
     {
         return $this->hasMany(User::class, 'kelas_id');
     }
+
+    protected static function booted()
+    {
+        static::deleting(function ($kelas) {
+            // Saat kelas dihapus, hapus semua siswa yang kelas_id-nya sama
+            $kelas->users()->delete();
+        });
+    }
+
+    // relasi ke user
+    public function users()
+    {
+        return $this->hasMany(User::class, 'kelas_id');
+    }
+
+    // relasi ke ujian
+    public function exams()
+    {
+        return $this->hasMany(Exam::class, 'kelas_id');
+    }
 }

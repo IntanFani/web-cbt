@@ -9,37 +9,51 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon; 
 use App\Models\Answer;
 use App\Models\Option;
+use App\Models\User;
+use App\Models\Kelas;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB; 
 
 class SiswaController extends Controller
 {
     public function index()
     {
-        // Ambil ID siswa yang sedang login
-        $userID = Auth::id();
+        $user = Auth::user();
 
-        // Ambil semua ujian + cek status pengerjaan siswa tersebut
-        $exams = Exam::with(['sessions' => function($query) use ($userID) {
-            $query->where('user_id', $userID);
-        }])->get();
+        // Filter: Ambil ujian dimana kelas_id di tabel exams SAMA DENGAN kelas_id di tabel users
+        $exams = Exam::where('kelas_id', $user->kelas_id)
+            ->with(['sessions' => function($query) use ($user) {
+                $query->where('user_id', $user->id);
+            }])
+            ->get();
 
-        // Return ke view yang sama (dashboard.siswa.index)
         return view('dashboard.siswa.index', compact('exams'));
     }
 
     // 1. Logic Persiapan Sebelum Masuk Ujian
-    public function startExam($id)
+    public function startExam(Request $request, $id)
     {
-        $user_id = Auth::id();
-        
-        // Cek apakah siswa sudah pernah mulai ujian ini?
-        $existingSession = ExamSession::where('user_id', $user_id)
-                                      ->where('exam_id', $id)
-                                      ->first();
+        // Ambil objek User yang sedang login (BUKAN cuma ID-nya)
+        $user_id = Auth::user(); 
+        $exam = Exam::findOrFail($id);
 
-        // Kalau belum ada sesi, kita buatkan sesi baru
+        // Proteksi: Bandingkan kelas_id ujian dengan kelas_id user
+        if ($exam->kelas_id != $user_id->kelas_id) {
+            return redirect()->back()->with('error', 'Maaf, ujian ini bukan untuk kelas Anda.');
+        }
+
+        // 1. Validasi kecocokan token
+        if ($request->token !== $exam->token) {
+            return redirect()->back()->with('error', 'Token yang Anda masukkan salah atau tidak berlaku!');
+        }
+        
+        // 2. Cek apakah sesi sudah ada
+        $existingSession = ExamSession::where('user_id', $user_id)
+                                    ->where('exam_id', $id)
+                                    ->first();
+
+        // 3. Jika belum ada, buat sesi baru
         if (!$existingSession) {
-            $exam = Exam::findOrFail($id);
-            
             ExamSession::create([
                 'user_id' => $user_id,
                 'exam_id' => $id,
@@ -49,7 +63,6 @@ class SiswaController extends Controller
             ]);
         }
 
-        // Redirect ke halaman pengerjaan soal
         return redirect()->route('ujian.show', $id);
     }
 
@@ -60,43 +73,55 @@ class SiswaController extends Controller
         
         // Ambil sesi ujian siswa (pastikan valid)
         $session = ExamSession::where('user_id', $user_id)
-                              ->where('exam_id', $id)
-                              ->where('status', 'ongoing')
-                              ->first();
+                            ->where('exam_id', $id)
+                            ->where('status', 'ongoing')
+                            ->first();
 
-        // Kalau tidak ada sesi (misal nembak URL tanpa klik Start), tendang balik
         if (!$session) {
             return redirect()->route('dashboard.siswa');
         }
 
-        // Ambil data ujian beserta soal dan opsinya
-        $exam = Exam::with(['questions.options'])->findOrFail($id);
+        // Ambil data ujian
+        $exam = Exam::findOrFail($id);
+
+        // ACAK SOAL DISINI:
+        // Kita ambil soal yang berelasi dengan exam_id ini secara acak
+        $questions = $exam->questions()->with('options')->inRandomOrder(Auth::id())->get();
+
+        // Masukkan kembali soal yang sudah diacak ke dalam object exam agar Blade tidak error
+        $exam->setRelation('questions', $questions);
 
         return view('dashboard.siswa.ujian', compact('exam', 'session'));
     }
 
     public function saveAnswer(Request $request)
-    {
-        // 1. Validasi data yang dikirim dari JS
+{
+    // 1. Validasi: option_id dan essay_answer dibuat opsional (nullable)
         $request->validate([
-            'session_id' => 'required',
+            'session_id'  => 'required',
             'question_id' => 'required',
-            'option_id' => 'required'
+            'option_id'   => 'nullable', // Dibuat opsional agar Essay bisa lewat
+            'essay_answer'=> 'nullable'  // Tambahkan ini untuk menampung teks essay
         ]);
 
-        // 2. Cek apakah jawaban ini benar/salah (Auto-Correction)
-        $option = Option::find($request->option_id);
-        $isCorrect = $option ? $option->is_correct : false;
+        // 2. Logika Auto-Correction hanya untuk Pilihan Ganda
+        $isCorrect = false;
+        if ($request->filled('option_id')) {
+            $option = Option::find($request->option_id);
+            $isCorrect = $option ? $option->is_correct : false;
+        }
 
-        // 3. Simpan atau Update Jawaban (Pakai updateOrCreate biar rapi)
+        // 3. Simpan atau Update Jawaban
+        // Pastikan di Model 'Answer' sudah ada 'essay_answer' di dalam $fillable
         Answer::updateOrCreate(
             [
-                'exam_session_id' => $request->session_id, // Kunci pencarian (WHERE)
-                'question_id' => $request->question_id
+                'exam_session_id' => $request->session_id,
+                'question_id'     => $request->question_id
             ],
             [
-                'option_id' => $request->option_id,        // Data yang diupdate
-                'is_correct' => $isCorrect
+                'option_id'    => $request->option_id,
+                'essay_answer' => $request->essay_answer, // Simpan teks essay ke database
+                'is_correct'   => $isCorrect
             ]
         );
 
@@ -149,5 +174,46 @@ class SiswaController extends Controller
                         ->get();
 
         return view('dashboard.siswa.history', compact('histories'));
+    }
+
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:csv,txt'
+        ]);
+
+        $file = $request->file('file');
+        DB::beginTransaction();
+
+        try {
+            if (($handle = fopen($file->getRealPath(), "r")) !== FALSE) {
+                fgetcsv($handle); // Lewati baris header
+
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    // Kolom CSV: 0=Nama, 1=Email, 2=Password, 3=Nama Kelas, 4=Angkatan
+                    
+                    // Cari ID Kelas berdasarkan nama kelas di CSV
+                    $kelas = Kelas::where('nama_kelas', trim($data[3]))->first();
+                    
+                    if ($kelas) {
+                        User::create([
+                            'name' => $data[0],
+                            'email' => $data[1],
+                            'password' => Hash::make($data[2]),
+                            'role' => 'siswa',
+                            'kelas_id' => $kelas->id,
+                            'angkatan' => $data[4],
+                        ]);
+                    }
+                }
+                fclose($handle);
+            }
+
+            DB::commit();
+            return back()->with('success', 'Data siswa berhasil diimport!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal import: ' . $e->getMessage());
+        }
     }
 }

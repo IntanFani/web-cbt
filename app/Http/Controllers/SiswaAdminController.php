@@ -33,9 +33,12 @@ class SiswaAdminController extends Controller
             });
         }
 
-        // 2. Filter Kelas
+        // 2. Filter Kelas (Disesuaikan agar menangkap parameter dari Halaman Kelas)
         if ($request->filled('filter_kelas')) {
             $query->where('kelas_id', $request->filter_kelas);
+        } elseif ($request->filled('kelas_id')) { 
+            // Tambahan: Jika redirect datang membawa 'kelas_id' bukan 'filter_kelas'
+            $query->where('kelas_id', $request->kelas_id);
         }
 
         // 3. Filter Angkatan
@@ -43,8 +46,7 @@ class SiswaAdminController extends Controller
             $query->where('angkatan', $request->filter_angkatan);
         }
 
-        // D. Ambil Data (Pakai PAGINATE, bukan GET)
-        // paginate(10) artinya 1 baris maksimal 10 siswa, sisanya jadi halaman 2
+        // D. Ambil Data (Pakai PAGINATE)
         $siswa = $query->latest()->paginate(10)->withQueryString(); 
 
         return view('dashboard.guru.siswa.index', compact('siswa', 'kelas', 'angkatan'));
